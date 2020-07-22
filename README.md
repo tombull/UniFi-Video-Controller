@@ -1,5 +1,11 @@
 # unifi-video-controller
 
+## Updated with some useful changes
+
+This is forked from [pducharme/UniFi-Video-Controller](https://github.com/pducharme/UniFi-Video-Controller). There are a couple of improvements, largely adapted from [jacobalberty/unifi-docker](https://github.com/jacobalberty/unifi-docker). Firstly, you can now set ports for all of the main Unifi Video functions. Secondly, it will work with your own certificates.
+
+## Original readme
+
 This docker image runs the unifi-video controller on Ubuntu. Originally intended for Unraid 6.x, it should run fine anywhere.
 
 Set your local data and videos directories in the `docker run` command. You can also specify a UID and GID for the daemon to run as.
