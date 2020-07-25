@@ -10,11 +10,12 @@ ENV LC_ALL C.UTF-8
 ENV LANG en_GB.UTF-8
 ENV LANGUAGE en_GB.UTF-8
 ENV PUID="99" PGID="100" UMASK="002"
-ENV BIND_PRIV=true \
-    CERTDIR=/var/cert \
-    CERTNAME=cert.pem \
-    CERT_IS_CHAIN=false \
-    CERT_PRIVATE_NAME=privkey.pem
+ENV BIND_PRIV=true
+#     \
+#     CERTDIR=/var/cert \
+#     CERTNAME=cert.pem \
+#     CERT_IS_CHAIN=false \
+#     CERT_PRIVATE_NAME=privkey.pem
 
 # Add needed patches and scripts
 ADD unifi-video.patch /unifi-video.patch
@@ -27,6 +28,12 @@ RUN apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv 9DA31620334BD75
     apt-get install -y apt-utils && \
     apt-get upgrade -y -o Dpkg::Options::="--force-confold" && \
     apt-get install -y  \
+    authbind \
+    dirmngr \
+    gpg \
+    gpg-agent \
+    procps \
+    libcap2-bin \
     jsvc \
     jq \
     openjdk-8-jre-headless \
