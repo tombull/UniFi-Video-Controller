@@ -10,12 +10,12 @@ ENV LC_ALL C.UTF-8
 ENV LANG en_GB.UTF-8
 ENV LANGUAGE en_GB.UTF-8
 ENV PUID="99" PGID="100" UMASK="002"
-ENV BIND_PRIV=true
-#     \
-#     CERTDIR=/var/cert \
-#     CERTNAME=cert.pem \
-#     CERT_IS_CHAIN=false \
-#     CERT_PRIVATE_NAME=privkey.pem
+ENV BIND_PRIV=true \
+    CERTDIR=/var/cert \
+    CERT_NAME=cert.pem \
+    CERT_PRIVATE_NAME=privkey.pem \
+    CERT_IS_CHAIN=false
+
 
 # Add needed patches and scripts
 ADD unifi-video.patch /unifi-video.patch

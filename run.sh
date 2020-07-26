@@ -89,95 +89,94 @@ set_java_home() {
 
 [ "x${JAVA_HOME}" != "x" ] || set_java_home
 
-# if [[ ! -d "${CERTDIR}" || ! -f "${CERTDIR}/${CERTNAME}" ]]; then
-# 	log "Certificate has not been found."
-# 	else
+if [[ ! -d "${CERTDIR}" || ! -f "${CERTDIR}/${CERT_NAME}" || ! -f "${CERTDIR}/${CERT_PRIVATE_NAME}" ]]; then
+	log "Certificate has not been found."
+else
+	log 'Cert directory found. Checking Certs'
 
-# 	log 'Cert directory found. Checking Certs'
+	if `md5sum -c "${CERTDIR}/${CERT_NAME}.md5" &>/dev/null`; then
+		log "Cert has not changed, not updating controller."
+	else
+		if [ ! -e "/usr/lib/unifi-video/data/keystore" ]; then
+			log "WARN: Missing keystore, creating a new one"
 
-# 	if `md5sum -c "${CERTDIR}/${CERTNAME}.md5" &>/dev/null`; then
-# 		log "Cert has not changed, not updating controller."
-# 	else
-# 		if [ ! -e "/usr/lib/unifi-video/data/keystore" ]; then
-# 			log "WARN: Missing keystore, creating a new one"
+			if [ ! -d "/usr/lib/unifi-video/data" ]; then
+				log "Missing data directory, creating..."
+				mkdir "/usr/lib/unifi-video/data"
+			fi
 
-# 			if [ ! -d "/usr/lib/unifi-video/data" ]; then
-# 				log "Missing data directory, creating..."
-# 				mkdir "/usr/lib/unifi-video/data"
-# 			fi
+			keytool -genkey -keyalg RSA -alias airvision -keystore "/usr/lib/unifi-video/data/keystore" \
+				-storepass ubiquiti -keypass ubiquiti -validity 1825 \
+				-keysize 4096 -dname "cn=UniFi"
+		fi
 
-# 			keytool -genkey -keyalg RSA -alias airvision -keystore "/usr/lib/unifi-video/data/keystore" \
-# 				-storepass ubiquiti -keypass ubiquiti -validity 1825 \
-# 				-keysize 4096 -dname "cn=UniFi"
-# 		fi
+		TEMPFILE=$(mktemp)
+		TMPLIST="${TEMPFILE}"
+		CERTTEMPFILE=$(mktemp)
+		TMPLIST+=" ${CERTTEMPFILE}"
+		CERTURI=$(openssl x509 -noout -ocsp_uri -in "${CERTDIR}/${CERT_NAME}")
+		# Identrust cross-signed CA cert needed by the java keystore for import.
+		# Can get original here: https://www.identrust.com/certificates/trustid/root-download-x3.html
+		cat > "${CERTTEMPFILE}" <<'_EOF'
+-----BEGIN CERTIFICATE-----
+MIIDSjCCAjKgAwIBAgIQRK+wgNajJ7qJMDmGLvhAazANBgkqhkiG9w0BAQUFADA/
+MSQwIgYDVQQKExtEaWdpdGFsIFNpZ25hdHVyZSBUcnVzdCBDby4xFzAVBgNVBAMT
+DkRTVCBSb290IENBIFgzMB4XDTAwMDkzMDIxMTIxOVoXDTIxMDkzMDE0MDExNVow
+PzEkMCIGA1UEChMbRGlnaXRhbCBTaWduYXR1cmUgVHJ1c3QgQ28uMRcwFQYDVQQD
+Ew5EU1QgUm9vdCBDQSBYMzCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEB
+AN+v6ZdQCINXtMxiZfaQguzH0yxrMMpb7NnDfcdAwRgUi+DoM3ZJKuM/IUmTrE4O
+rz5Iy2Xu/NMhD2XSKtkyj4zl93ewEnu1lcCJo6m67XMuegwGMoOifooUMM0RoOEq
+OLl5CjH9UL2AZd+3UWODyOKIYepLYYHsUmu5ouJLGiifSKOeDNoJjj4XLh7dIN9b
+xiqKqy69cK3FCxolkHRyxXtqqzTWMIn/5WgTe1QLyNau7Fqckh49ZLOMxt+/yUFw
+7BZy1SbsOFU5Q9D8/RhcQPGX69Wam40dutolucbY38EVAjqr2m7xPi71XAicPNaD
+aeQQmxkqtilX4+U9m5/wAl0CAwEAAaNCMEAwDwYDVR0TAQH/BAUwAwEB/zAOBgNV
+HQ8BAf8EBAMCAQYwHQYDVR0OBBYEFMSnsaR7LHH62+FLkHX/xBVghYkQMA0GCSqG
+SIb3DQEBBQUAA4IBAQCjGiybFwBcqR7uKGY3Or+Dxz9LwwmglSBd49lZRNI+DT69
+ikugdB/OEIKcdBodfpga3csTS7MgROSR6cz8faXbauX+5v3gTt23ADq1cEmv8uXr
+AvHRAosZy5Q6XkjEGB5YGV8eAlrwDPGxrancWYaLbumR9YbK+rlmM6pZW87ipxZz
+R8srzJmwN0jP41ZL9c8PDHIyh8bwRLtTcm1D9SZImlJnt1ir/md2cXjbDaJWFBM5
+JDGFoqgCWjBH4d1QB7wCCZAA62RjYJsWvIjJEubSfZGL+T0yjWW06XyxV3bqxbYo
+Ob8VZRzI9neWagqNdwvYkQsEjgfbKbYK7p2CNTUQ
+-----END CERTIFICATE-----
+_EOF
 
-# 		TEMPFILE=$(mktemp)
-# 		TMPLIST="${TEMPFILE}"
-# 		CERTTEMPFILE=$(mktemp)
-# 		TMPLIST+=" ${CERTTEMPFILE}"
-# 		CERTURI=$(openssl x509 -noout -ocsp_uri -in "${CERTDIR}/${CERTNAME}")
-# 		# Identrust cross-signed CA cert needed by the java keystore for import.
-# 		# Can get original here: https://www.identrust.com/certificates/trustid/root-download-x3.html
-# 		cat > "${CERTTEMPFILE}" <<'_EOF'
-# -----BEGIN CERTIFICATE-----
-# MIIDSjCCAjKgAwIBAgIQRK+wgNajJ7qJMDmGLvhAazANBgkqhkiG9w0BAQUFADA/
-# MSQwIgYDVQQKExtEaWdpdGFsIFNpZ25hdHVyZSBUcnVzdCBDby4xFzAVBgNVBAMT
-# DkRTVCBSb290IENBIFgzMB4XDTAwMDkzMDIxMTIxOVoXDTIxMDkzMDE0MDExNVow
-# PzEkMCIGA1UEChMbRGlnaXRhbCBTaWduYXR1cmUgVHJ1c3QgQ28uMRcwFQYDVQQD
-# Ew5EU1QgUm9vdCBDQSBYMzCCASIwDQYJKoZIhvcNAQEBBQADggEPADCCAQoCggEB
-# AN+v6ZdQCINXtMxiZfaQguzH0yxrMMpb7NnDfcdAwRgUi+DoM3ZJKuM/IUmTrE4O
-# rz5Iy2Xu/NMhD2XSKtkyj4zl93ewEnu1lcCJo6m67XMuegwGMoOifooUMM0RoOEq
-# OLl5CjH9UL2AZd+3UWODyOKIYepLYYHsUmu5ouJLGiifSKOeDNoJjj4XLh7dIN9b
-# xiqKqy69cK3FCxolkHRyxXtqqzTWMIn/5WgTe1QLyNau7Fqckh49ZLOMxt+/yUFw
-# 7BZy1SbsOFU5Q9D8/RhcQPGX69Wam40dutolucbY38EVAjqr2m7xPi71XAicPNaD
-# aeQQmxkqtilX4+U9m5/wAl0CAwEAAaNCMEAwDwYDVR0TAQH/BAUwAwEB/zAOBgNV
-# HQ8BAf8EBAMCAQYwHQYDVR0OBBYEFMSnsaR7LHH62+FLkHX/xBVghYkQMA0GCSqG
-# SIb3DQEBBQUAA4IBAQCjGiybFwBcqR7uKGY3Or+Dxz9LwwmglSBd49lZRNI+DT69
-# ikugdB/OEIKcdBodfpga3csTS7MgROSR6cz8faXbauX+5v3gTt23ADq1cEmv8uXr
-# AvHRAosZy5Q6XkjEGB5YGV8eAlrwDPGxrancWYaLbumR9YbK+rlmM6pZW87ipxZz
-# R8srzJmwN0jP41ZL9c8PDHIyh8bwRLtTcm1D9SZImlJnt1ir/md2cXjbDaJWFBM5
-# JDGFoqgCWjBH4d1QB7wCCZAA62RjYJsWvIjJEubSfZGL+T0yjWW06XyxV3bqxbYo
-# Ob8VZRzI9neWagqNdwvYkQsEjgfbKbYK7p2CNTUQ
-# -----END CERTIFICATE-----
-# _EOF
+		log "Cert has changed, updating controller..."
+		md5sum "${CERTDIR}/${CERT_NAME}" > "${CERTDIR}/${CERT_NAME}.md5"
+		log "Using openssl to prepare certificate..."
+		CHAIN=$(mktemp)
+		TMPLIST+=" ${CHAIN}"
 
-# 		log "Cert has changed, updating controller..."
-# 		md5sum "${CERTDIR}/${CERTNAME}" > "${CERTDIR}/${CERTNAME}.md5"
-# 		log "Using openssl to prepare certificate..."
-# 		CHAIN=$(mktemp)
-# 		TMPLIST+=" ${CHAIN}"
-
-# 		if [[ "${CERTURI}" == *"letsencrypt"* && "$CERT_IS_CHAIN" == "true" ]]; then
-# 			awk 1 "${CERTTEMPFILE}" "${CERTDIR}/${CERTNAME}" >> "${CHAIN}"
-# 		elif [[ "${CERTURI}" == *"letsencrypt"* ]]; then
-# 			awk 1 "${CERTTEMPFILE}" "${CERTDIR}/chain.pem" "${CERTDIR}/${CERTNAME}" >> "${CHAIN}"
-# 		elif [[ -f "${CERTDIR}/ca.pem" ]]; then
-# 			awk 1 "${CERTDIR}/ca.pem" "${CERTDIR}/chain.pem" "${CERTDIR}/${CERTNAME}" >> "${CHAIN}"
-# 		else
-# 			awk 1 "${CERTDIR}/chain.pem" "${CERTDIR}/${CERTNAME}" >> "${CHAIN}"
-# 		fi
-# 	openssl pkcs12 -export  -passout pass:ubiquiti \
-# 			-in "${CHAIN}" \
-# 			-inkey "${CERTDIR}/${CERT_PRIVATE_NAME}" \
-# 			-out "${TEMPFILE}" -name airvision
-# 		log "Removing existing certificate from Unifi protected keystore..."
-# 		keytool -delete -alias airvision -keystore "/usr/lib/unifi-video/data/keystore" \
-# 			-deststorepass ubiquiti
-# 		log "Inserting certificate into Unifi keystore..."
-# 		keytool -trustcacerts -importkeystore \
-# 			-deststorepass ubiquiti \
-# 			-destkeypass ubiquiti \
-# 			-destkeystore "/usr/lib/unifi-video/data/keystore" \
-# 			-srckeystore "${TEMPFILE}" -srcstoretype PKCS12 \
-# 			-srcstorepass ubiquiti \
-# 			-alias airvision
-# 		log "Cleaning up temp files"
-# 		for file in ${TMPLIST}; do
-# 			rm -f "${file}"
-# 		done
-# 		log "Done!"
-# 	fi
-# fi
+		if [[ "${CERTURI}" == *"letsencrypt"* && "$CERT_IS_CHAIN" == "true" ]]; then
+			awk 1 "${CERTTEMPFILE}" "${CERTDIR}/${CERT_NAME}" >> "${CHAIN}"
+		elif [[ "${CERTURI}" == *"letsencrypt"* ]]; then
+			awk 1 "${CERTTEMPFILE}" "${CERTDIR}/chain.pem" "${CERTDIR}/${CERT_NAME}" >> "${CHAIN}"
+		elif [[ -f "${CERTDIR}/ca.pem" ]]; then
+			awk 1 "${CERTDIR}/ca.pem" "${CERTDIR}/chain.pem" "${CERTDIR}/${CERT_NAME}" >> "${CHAIN}"
+		else
+			awk 1 "${CERTDIR}/chain.pem" "${CERTDIR}/${CERT_NAME}" >> "${CHAIN}"
+		fi
+	openssl pkcs12 -export  -passout pass:ubiquiti \
+			-in "${CHAIN}" \
+			-inkey "${CERTDIR}/${CERT_PRIVATE_NAME}" \
+			-out "${TEMPFILE}" -name airvision
+		log "Removing existing certificate from Unifi protected keystore..."
+		keytool -delete -alias airvision -keystore "/usr/lib/unifi-video/data/keystore" \
+			-deststorepass ubiquiti
+		log "Inserting certificate into Unifi keystore..."
+		keytool -trustcacerts -importkeystore \
+			-deststorepass ubiquiti \
+			-destkeypass ubiquiti \
+			-destkeystore "/usr/lib/unifi-video/data/keystore" \
+			-srckeystore "${TEMPFILE}" -srcstoretype PKCS12 \
+			-srcstorepass ubiquiti \
+			-alias airvision
+		log "Cleaning up temp files"
+		for file in ${TMPLIST}; do
+			rm -f "${file}"
+		done
+		log "Done!"
+	fi
+fi
 
 confSet () {
   file=$1
@@ -234,17 +233,6 @@ fi
 for key in "${!settings[@]}"; do
   confSet "$confFile" "$key" "${settings[$key]}"
 done
-
-# if [ "${BIND_PRIV}" == "true" ]; then
-# 	if setcap 'cap_net_bind_service=+ep' "${JAVA_HOME}/jre/bin/java"; then
-# 		sleep 1
-# 	else
-# 		log "ERROR: setcap failed, can not continue"
-# 		log "ERROR: You may either launch with -e BIND_PRIV=false and only use ports >1024"
-# 		log "ERROR: or run this container as root"
-# 		exit 1
-# 	fi
-# fi
 
 if [ "${BIND_PRIV}" == "true" ]; then
 	if [ "$UNIFI_VIDEO_HTTP_PORT" -le "1024" ]; then
